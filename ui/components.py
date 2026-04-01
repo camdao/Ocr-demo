@@ -1,27 +1,46 @@
 # UI Components - các thành phần giao diện
 import streamlit as st
+import sys
 from PIL import Image
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, Any
 from ocr.tesseract_ocr import TesseractOCR
-from ocr.paddle_ocr import PaddleOCREngine
+
+PADDLE_IMPORT_ERROR = None
+try:
+    from ocr.paddle_ocr import PaddleOCREngine
+except Exception as exc:
+    PaddleOCREngine = None
+    PADDLE_IMPORT_ERROR = exc
 
 class SidebarConfig:
     """Quản lý cấu hình sidebar"""
     
     @staticmethod
-    def render() -> Union[TesseractOCR, PaddleOCREngine]:
+    def render() -> Union[TesseractOCR, Any]:
         """Render sidebar và trả về OCR instance"""
         st.sidebar.header("⚙️ Cấu hình")
         
         # Model selection
+        model_options = ["Tesseract"]
+        if PaddleOCREngine is not None:
+            model_options.append("PaddleOCR")
+
         model = st.sidebar.selectbox(
             "Chọn model OCR:",
-            ["Tesseract", "PaddleOCR"],
+            model_options,
             format_func=lambda x: {
                 "Tesseract": "📄 Tesseract OCR",
                 "PaddleOCR": "🎯 PaddleOCR"
             }.get(x, x)
         )
+
+        if PaddleOCREngine is None:
+            if isinstance(PADDLE_IMPORT_ERROR, ModuleNotFoundError):
+                st.sidebar.info("PaddleOCR chưa sẵn sàng trong môi trường Python hiện tại. Đang dùng Tesseract OCR.")
+            else:
+                st.sidebar.warning(f"Không thể khởi tạo PaddleOCR: {PADDLE_IMPORT_ERROR}")
+
+            st.sidebar.caption(f"Python đang chạy: {sys.executable}")
         
         if model == "Tesseract":
             # Language selection for Tesseract
@@ -96,7 +115,7 @@ class InputSection:
                 
                 if uploaded_file is not None:
                     image_data = Image.open(uploaded_file)
-                    st.image(image_data, width='stretch')
+                    st.image(image_data, use_column_width=True)
             else:
                 st.subheader("Capture từ camera")
                 camera_image = st.camera_input(
@@ -106,7 +125,7 @@ class InputSection:
                 
                 if camera_image is not None:
                     image_data = Image.open(camera_image)
-                    st.image(image_data, width='stretch')
+                    st.image(image_data, use_column_width=True)
         
         return col2, image_data
 
