@@ -56,11 +56,11 @@ class SidebarConfig:
             # Language selection for PaddleOCR
             language = st.sidebar.selectbox(
                 "Chọn ngôn ngữ:",
-                ["ch", "en", "vi", "ja"],
+                ["vi", "en", "ch", "ja"],
                 format_func=lambda x: {
+                    "vi": "🇻🇳 Vietnamese",
                     "ch": "🇨🇳 Chinese",
                     "en": "🇺🇸 English",
-                    "vi": "🇻🇳 Vietnamese",
                     "ja": "🇯🇵 Japanese"
                 }.get(x, x)
             )
@@ -96,7 +96,7 @@ class InputSection:
                 
                 if uploaded_file is not None:
                     image_data = Image.open(uploaded_file)
-                    st.image(image_data, use_container_width=True)
+                    st.image(image_data, width='stretch')
             else:
                 st.subheader("Capture từ camera")
                 camera_image = st.camera_input(
@@ -106,7 +106,7 @@ class InputSection:
                 
                 if camera_image is not None:
                     image_data = Image.open(camera_image)
-                    st.image(image_data, use_container_width=True)
+                    st.image(image_data, width='stretch')
         
         return col2, image_data
 
@@ -194,7 +194,7 @@ class Header:
             initial_sidebar_state="expanded"
         )
         
-        st.title("📄 OCR Demo - Tesseract")
+        st.title("📄 OCR Demo")
         st.markdown("Ứng dụng demo nhận diện ký tự quang học (OCR) từ hình ảnh")
 
 
