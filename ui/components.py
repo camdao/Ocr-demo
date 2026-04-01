@@ -4,22 +4,24 @@ from PIL import Image
 from typing import Tuple, Optional, Union
 from ocr.tesseract_ocr import TesseractOCR
 from ocr.paddle_ocr import PaddleOCREngine
+from ocr.api_ocr import APILayoutParsingOCR
 
 class SidebarConfig:
     """Quản lý cấu hình sidebar"""
     
     @staticmethod
-    def render() -> Union[TesseractOCR, PaddleOCREngine]:
+    def render() -> Union[TesseractOCR, PaddleOCREngine, APILayoutParsingOCR]:
         """Render sidebar và trả về OCR instance"""
         st.sidebar.header("⚙️ Cấu hình")
         
         # Model selection
         model = st.sidebar.selectbox(
             "Chọn model OCR:",
-            ["Tesseract", "PaddleOCR"],
+            ["Tesseract", "PaddleOCR", "API PaddleOCR-VL-1.5"],
             format_func=lambda x: {
                 "Tesseract": "📄 Tesseract OCR",
-                "PaddleOCR": "🎯 PaddleOCR"
+                "PaddleOCR": "🎯 PaddleOCR",
+                "API PaddleOCR-VL-1.5": "🌐 API PaddleOCR-VL-1.5"
             }.get(x, x)
         )
         
@@ -52,7 +54,7 @@ class SidebarConfig:
             
             return TesseractOCR(lang=language, config=f"--psm {psm_option}")
         
-        else:  # PaddleOCR
+        elif model == "PaddleOCR":
             # Language selection for PaddleOCR
             language = st.sidebar.selectbox(
                 "Chọn ngôn ngữ:",
@@ -69,6 +71,10 @@ class SidebarConfig:
             use_angle_cls = st.sidebar.checkbox("Sử dụng nhận diện góc", value=True)
             
             return PaddleOCREngine(lang=language, use_angle_cls=use_angle_cls)
+        
+        else: 
+            st.sidebar.info("ℹ️ Sử dụng Baidu API Layout Parsing (chất lượng cao nhất)")
+            return APILayoutParsingOCR()
 
 
 class InputSection:
@@ -207,7 +213,7 @@ class Footer:
         st.markdown("---")
         st.markdown("""
         <div style="text-align: center; color: gray; font-size: 12px;">
-            <p>Powered by Tesseract OCR | Streamlit Demo</p>
+            <p>Powered by Tesseract OCR | PaddleOCR | Baidu API | Streamlit Demo</p>
             <p>Hỗ trợ nhiều ngôn ngữ và chế độ xử lý khác nhau</p>
         </div>
         """, unsafe_allow_html=True)
