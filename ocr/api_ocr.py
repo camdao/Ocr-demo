@@ -2,6 +2,7 @@ import base64
 import os
 import requests
 from PIL import Image
+from PIL import ImageOps
 import io
 from dotenv import load_dotenv
 
@@ -14,25 +15,38 @@ class APILayoutParsingOCR:
     def __init__(self, api_url=None, token=None):
         self.api_url = api_url or os.getenv("API_URL", "https://20ec2cibw7n8y5m8.aistudio-app.com/layout-parsing")
         self.token = token or os.getenv("API_TOKEN", "")
-        self.headers = {
-            "Authorization": f"token {self.token}",
-            "Content-Type": "application/json"
-        }
+        self.headers = {"Content-Type": "application/json"}
+        if self.token:
+            self.headers["Authorization"] = f"token {self.token}"
+
+    @staticmethod
+    def _prepare_image_bytes(image: Image.Image) -> bytes:
+        # Fix orientation metadata from camera captures before OCR.
+        image = ImageOps.exif_transpose(image)
+
+        if image.mode != 'RGB':
+            image = image.convert('RGB')
+
+        # Camera images are often very large; downscale to reduce API payload and timeout risk.
+        max_side = 1920
+        w, h = image.size
+        longest = max(w, h)
+        if longest > max_side:
+            scale = max_side / float(longest)
+            new_size = (int(w * scale), int(h * scale))
+            image = image.resize(new_size, Image.Resampling.LANCZOS)
+
+        img_bytes = io.BytesIO()
+        image.save(img_bytes, format='JPEG', quality=88, optimize=True)
+        return img_bytes.getvalue()
     
     def read_image(self, image):
         """Gửi ảnh tới API và nhận diện text"""
         try:
             # Convert PIL Image to bytes
             if isinstance(image, Image.Image):
-                # Convert to RGB if needed
-                if image.mode != 'RGB':
-                    image = image.convert('RGB')
-                
-                # Save to bytes
-                img_bytes = io.BytesIO()
-                image.save(img_bytes, format='PNG')
-                img_bytes.seek(0)
-                file_data = base64.b64encode(img_bytes.read()).decode("ascii")
+                prepared = self._prepare_image_bytes(image)
+                file_data = base64.b64encode(prepared).decode("ascii")
             else:
                 raise ValueError("Input phải là PIL Image")
             
@@ -45,10 +59,10 @@ class APILayoutParsingOCR:
                 "useChartRecognition": False,
             }
             
-            response = requests.post(self.api_url, json=payload, headers=self.headers, timeout=60)
+            response = requests.post(self.api_url, json=payload, headers=self.headers, timeout=90)
             
             if response.status_code != 200:
-                raise Exception(f"API error: {response.status_code}")
+                raise Exception(f"API error: {response.status_code} - {response.text[:300]}")
             
             result = response.json()
             
