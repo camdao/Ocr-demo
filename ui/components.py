@@ -4,27 +4,45 @@ import sys
 from PIL import Image
 from typing import Tuple, Optional, Union, Any
 from ocr.tesseract_ocr import TesseractOCR
-from ocr.paddle_ocr import PaddleOCREngine
 from ocr.api_ocr import APILayoutParsingOCR
+
+PADDLE_IMPORT_ERROR = None
+try:
+    from ocr.paddle_ocr import PaddleOCREngine
+except Exception as exc:
+    PaddleOCREngine = None
+    PADDLE_IMPORT_ERROR = exc
 
 class SidebarConfig:
     """Quản lý cấu hình sidebar"""
     
     @staticmethod
-    def render() -> Union[TesseractOCR, PaddleOCREngine, APILayoutParsingOCR]:
+    def render() -> Union[TesseractOCR, Any]:
         """Render sidebar và trả về OCR instance"""
         st.sidebar.header("⚙️ Cấu hình")
         
+        # Model selection
+        model_options = ["Tesseract", "PaddleOCR API"]
+        if PaddleOCREngine is not None:
+            model_options.append("PaddleOCR")
 
         model = st.sidebar.selectbox(
             "Chọn model OCR:",
-            ["Tesseract", "PaddleOCR", "API PaddleOCR-VL-1.5"],
+            model_options,
             format_func=lambda x: {
                 "Tesseract": "📄 Tesseract OCR",
-                "PaddleOCR": "🎯 PaddleOCR",
-                "API PaddleOCR-VL-1.5": "🌐 API PaddleOCR-VL-1.5"
+                "PaddleOCR API": "☁️ PaddleOCR-VL API",
+                "PaddleOCR": "🎯 PaddleOCR"
             }.get(x, x)
         )
+
+        if PaddleOCREngine is None:
+            if isinstance(PADDLE_IMPORT_ERROR, ModuleNotFoundError):
+                st.sidebar.info("PaddleOCR chưa sẵn sàng trong môi trường Python hiện tại. Đang dùng Tesseract OCR.")
+            else:
+                st.sidebar.warning(f"Không thể khởi tạo PaddleOCR: {PADDLE_IMPORT_ERROR}")
+
+            st.sidebar.caption(f"Python đang chạy: {sys.executable}")
         
         if model == "Tesseract":
             # Language selection for Tesseract
@@ -54,8 +72,17 @@ class SidebarConfig:
             )
             
             return TesseractOCR(lang=language, config=f"--psm {psm_option}")
+
+        elif model == "PaddleOCR API":
+            st.sidebar.caption("Sử dụng API_URL và API_TOKEN trong file .env, hoặc nhập trực tiếp bên dưới.")
+            api_url = st.sidebar.text_input("API URL (optional)", value="")
+            api_token = st.sidebar.text_input("API Token (optional)", value="", type="password")
+            return APILayoutParsingOCR(
+                api_url=api_url.strip() or None,
+                token=api_token.strip() or None,
+            )
         
-        elif model == "PaddleOCR":
+        else:  # PaddleOCR
             # Language selection for PaddleOCR
             language = st.sidebar.selectbox(
                 "Chọn ngôn ngữ:",
@@ -72,10 +99,6 @@ class SidebarConfig:
             use_angle_cls = st.sidebar.checkbox("Sử dụng nhận diện góc", value=True)
             
             return PaddleOCREngine(lang=language, use_angle_cls=use_angle_cls)
-        
-        else: 
-            st.sidebar.info("ℹ️ Sử dụng Baidu API Layout Parsing (chất lượng cao nhất)")
-            return APILayoutParsingOCR()
 
 
 class InputSection:
@@ -214,7 +237,7 @@ class Footer:
         st.markdown("---")
         st.markdown("""
         <div style="text-align: center; color: gray; font-size: 12px;">
-            <p>Powered by Tesseract OCR | PaddleOCR | Baidu API | Streamlit Demo</p>
+            <p>Powered by Tesseract OCR | Streamlit Demo</p>
             <p>Hỗ trợ nhiều ngôn ngữ và chế độ xử lý khác nhau</p>
         </div>
         """, unsafe_allow_html=True)

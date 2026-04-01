@@ -1,3 +1,9 @@
+import os
+
+# Stabilize Paddle runtime on some Windows CPU setups.
+os.environ.setdefault("FLAGS_use_mkldnn", "0")
+os.environ.setdefault("FLAGS_enable_pir_api", "0")
+
 from paddleocr import PaddleOCR
 import numpy as np
 from PIL import Image
@@ -6,7 +12,23 @@ class PaddleOCREngine:
     def __init__(self, lang='vi', use_angle_cls=True):
         self.lang = lang
         self.use_angle_cls = use_angle_cls
-        self.ocr = PaddleOCR(use_angle_cls=use_angle_cls, lang=self.map_language(lang))
+        mapped_lang = self.map_language(lang)
+
+        # Important: disable MKLDNN to avoid OneDNN/PIR runtime crash on some Windows CPU setups.
+        try:
+            # PaddleOCR >= 3.x style
+            self.ocr = PaddleOCR(
+                lang=mapped_lang,
+                use_textline_orientation=use_angle_cls,
+                enable_mkldnn=False,
+            )
+        except TypeError:
+            # Backward compatibility for PaddleOCR 2.x style
+            self.ocr = PaddleOCR(
+                use_angle_cls=use_angle_cls,
+                lang=mapped_lang,
+                enable_mkldnn=False,
+            )
     
     @staticmethod
     def map_language(lang):
@@ -73,5 +95,11 @@ class PaddleOCREngine:
             return text.strip() if text else "Không tìm thấy văn bản"
             
         except Exception as e:
+            err_msg = str(e)
+            if "ConvertPirAttribute2RuntimeAttribute" in err_msg:
+                raise RuntimeError(
+                    "PaddleOCR runtime incompatibility on current environment. "
+                    "Please switch to Tesseract OCR in sidebar or reinstall compatible Paddle versions."
+                ) from e
             raise
 
