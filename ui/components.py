@@ -1,7 +1,8 @@
 # UI Components - các thành phần giao diện
 import streamlit as st
+import sys
 from PIL import Image
-from typing import Tuple, Optional, Union
+from typing import Tuple, Optional, Union, Any
 from ocr.tesseract_ocr import TesseractOCR
 from ocr.paddle_ocr import PaddleOCREngine
 from ocr.api_ocr import APILayoutParsingOCR
@@ -14,7 +15,7 @@ class SidebarConfig:
         """Render sidebar và trả về OCR instance"""
         st.sidebar.header("⚙️ Cấu hình")
         
-        # Model selection
+
         model = st.sidebar.selectbox(
             "Chọn model OCR:",
             ["Tesseract", "PaddleOCR", "API PaddleOCR-VL-1.5"],
@@ -102,7 +103,7 @@ class InputSection:
                 
                 if uploaded_file is not None:
                     image_data = Image.open(uploaded_file)
-                    st.image(image_data, width='stretch')
+                    st.image(image_data, use_column_width=True)
             else:
                 st.subheader("Capture từ camera")
                 camera_image = st.camera_input(
@@ -112,7 +113,7 @@ class InputSection:
                 
                 if camera_image is not None:
                     image_data = Image.open(camera_image)
-                    st.image(image_data, width='stretch')
+                    st.image(image_data, use_column_width=True)
         
         return col2, image_data
 
